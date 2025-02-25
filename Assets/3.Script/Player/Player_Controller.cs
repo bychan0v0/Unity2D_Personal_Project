@@ -156,7 +156,7 @@ public class Player_Controller : MonoBehaviour
 
         if (Input.GetKey("space") && IsGrounded())
         {
-            jumpCharge += 0.052f;
+            jumpCharge += 3.3f * Time.fixedDeltaTime;
         }
 
         if (jumpCharge >= maxJumpCharge && IsGrounded())
