@@ -7,7 +7,7 @@ public class Player_Controller : MonoBehaviour
     [Header("Player")]
     public float moveSpeed = 2.5f;
     public float jumpCharge = 0f;
-    public float minJumpCharge = 0.5f;
+    public float minJumpCharge = 2f;
     public float maxJumpCharge = 14f;
 
     [Header("Physics")]
