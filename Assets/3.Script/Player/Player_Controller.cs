@@ -19,9 +19,6 @@ public class Player_Controller : MonoBehaviour
     private Vector2 boxCastSize= new Vector2(0.7f, 0.75f);
     private float boxCastMaxDistance= 0.08f;
 
-    public Transform groundCheck;
-    public float groundCheckRadius = 0.2f;
-
     private float moveInput;
     private Vector2 velocity;
 
@@ -77,8 +74,6 @@ public class Player_Controller : MonoBehaviour
         if (!IsGrounded())
         {
             velocity.y += gravity * Time.fixedDeltaTime;
-
-            Debug.Log($"y 값 출력: { velocity.y }");
 
             if(velocity.y < 0)
             {
@@ -156,7 +151,7 @@ public class Player_Controller : MonoBehaviour
 
         if (Input.GetKey("space") && IsGrounded())
         {
-            jumpCharge += 3.3f * Time.fixedDeltaTime;
+            jumpCharge += 20.5f * Time.deltaTime;
         }
 
         if (jumpCharge >= maxJumpCharge && IsGrounded())
@@ -164,7 +159,7 @@ public class Player_Controller : MonoBehaviour
             animator.Play("Jump_Up");
 
             velocity = new Vector2(chargedDir * moveSpeed, maxJumpCharge);
-            rb.MovePosition(rb.position + velocity * Time.fixedDeltaTime);
+            rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
             rb.AddForce(Vector2.up * 10f);
             Invoke("ResetJump", 0.2f);
@@ -175,7 +170,7 @@ public class Player_Controller : MonoBehaviour
             animator.Play("Jump_Up");
 
             velocity = new Vector2(chargedDir * moveSpeed, jumpCharge);
-            rb.MovePosition(rb.position + velocity * Time.fixedDeltaTime);
+            rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
             Invoke("ResetJump", 0.2f);         
         }
@@ -189,7 +184,8 @@ public class Player_Controller : MonoBehaviour
 
     private bool IsGrounded()
     {
-        return Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+        RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
+        return hit.collider != null;
     }
 
     private void OnDrawGizmos()
@@ -200,12 +196,5 @@ public class Player_Controller : MonoBehaviour
         // 아래로 이동한 박스
         Vector3 box = transform.position + Vector3.down * boxCastMaxDistance;
         Gizmos.DrawWireCube(box, boxCastSize);
-
-        // groundCheck 위치와 체크 영역 시각화
-        if (groundCheck != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
-        }
     }
 }
