@@ -15,6 +15,7 @@ public class Player_Controller : MonoBehaviour
 
     [Header("Components")]
     public LayerMask groundLayer;
+    public LayerMask slopeLayer;
 
     private Vector2 boxCastSize= new Vector2(0.7f, 0.75f);
     private float boxCastMaxDistance= 0.08f;
@@ -24,6 +25,7 @@ public class Player_Controller : MonoBehaviour
 
     private bool isChargingJump = false;
     private float chargedDir = 0f;
+    private bool bounce = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
@@ -48,6 +50,9 @@ public class Player_Controller : MonoBehaviour
 
     private void Move()
     {
+        float deltaX = velocity.x * Time.fixedDeltaTime;
+        float deltaY = velocity.y * Time.fixedDeltaTime;
+
         if (IsGrounded() && !isChargingJump)
         {
             moveInput = Input.GetAxisRaw("Horizontal");
@@ -75,39 +80,79 @@ public class Player_Controller : MonoBehaviour
         {
             velocity.y += gravity * Time.fixedDeltaTime;
 
-            if(velocity.y < 0)
+            if(velocity.y < 0 && !bounce)
             {
                 animator.Play("Jump_Down");
             }
         }
         else if (!isChargingJump && velocity.y < 0)
         {
-            if (IsGrounded() && velocity.y <= -20)
+            Debug.Log($"¼Óµµ y °ª: {velocity.y}");
+            if (IsGrounded() && velocity.y <= -16)
             {
-                animator.Play("Splat");
-
                 velocity.y = 0f;
+                bounce = false;
+
+                animator.Play("Splat");
             }
             else
             {
                 velocity.y = 0f;
+                bounce = false;
 
                 animator.Play("Idle");
             }
-        }
+        }  
 
-        float deltaX = velocity.x * Time.fixedDeltaTime;
-        float deltaY = velocity.y * Time.fixedDeltaTime;
-
-        if (moveInput != 0)
+        if (IsGrounded() && moveInput != 0)
         {
             Vector2 direction = new Vector2(Mathf.Sign(moveInput), 0);
             RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
 
             if (hit.collider != null)
             {
-                deltaX = (hit.distance - 0.01f) * Mathf.Sign(deltaX);
+                deltaX = (hit.distance - 0.05f) * Mathf.Sign(deltaX);
             }
+        }
+
+        if (!IsGrounded() && Mathf.Abs(velocity.y) > 0)
+        {
+            Vector2 direction = new Vector2(Mathf.Sign(velocity.x), 0);
+            RaycastHit2D wallHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
+            RaycastHit2D headHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.up, Mathf.Abs(deltaY), groundLayer);
+
+            if (wallHit.collider != null)
+            {
+                bounce = true;
+
+                Vector2 reflected = Vector2.Reflect(velocity, wallHit.normal);
+                reflected = new Vector2(reflected.x * 0.5f, reflected.y);
+                velocity = reflected;
+
+                animator.Play("Bounce");
+
+                deltaX = velocity.x * Time.fixedDeltaTime;
+                deltaY = velocity.y * Time.fixedDeltaTime;
+            }
+
+            if (headHit.collider != null)
+            {
+                bounce = true;
+
+                Vector2 reflected = Vector2.Reflect(velocity, headHit.normal);
+                reflected = new Vector2(reflected.x * 0.8f, reflected.y * 0.5f);
+                velocity = reflected;
+
+                animator.Play("Bounce");
+
+                deltaX = velocity.x * Time.fixedDeltaTime;
+                deltaY = velocity.y * Time.fixedDeltaTime;
+            }
+        }
+
+        if (IsSlope())
+        {
+             
         }
 
         Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
@@ -185,6 +230,12 @@ public class Player_Controller : MonoBehaviour
     private bool IsGrounded()
     {
         RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
+        return hit.collider != null;
+    }
+
+    private bool IsSlope()
+    {
+        RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, slopeLayer);
         return hit.collider != null;
     }
 
