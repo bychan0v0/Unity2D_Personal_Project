@@ -17,8 +17,11 @@ public class Player_Controller : MonoBehaviour
     public LayerMask groundLayer;
     public LayerMask slopeLayer;
 
-    private Vector2 boxCastSize= new Vector2(0.7f, 0.75f);
-    private float boxCastMaxDistance= 0.08f;
+    RaycastHit2D groundHit;
+    RaycastHit2D slopeHit;
+
+    public Vector2 boxCastSize= new Vector2(0.7f, 0.75f);
+    public float boxCastMaxDistance= 0.08f;
 
     private float moveInput;
     private Vector2 velocity;
@@ -26,6 +29,8 @@ public class Player_Controller : MonoBehaviour
     private bool isChargingJump = false;
     private float chargedDir = 0f;
     private bool bounce = false;
+    public bool isGround;
+    public bool isSlope;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
@@ -41,6 +46,9 @@ public class Player_Controller : MonoBehaviour
     private void Update()
     {
         Jump();
+
+        isGround = IsGrounded();
+        isSlope = IsSlope();
     }
 
     private void FixedUpdate()
@@ -53,7 +61,32 @@ public class Player_Controller : MonoBehaviour
         float deltaX = velocity.x * Time.fixedDeltaTime;
         float deltaY = velocity.y * Time.fixedDeltaTime;
 
-        if (IsGrounded() && !isChargingJump)
+        if (IsSlope())
+        {
+            Vector2 slopeNormal = slopeHit.normal.normalized;
+            Vector2 slopeTangent = new Vector2(-slopeNormal.y, slopeNormal.x);
+
+            if (Vector2.Dot(slopeTangent, Vector2.down) < 0)
+            {
+                slopeTangent = -slopeTangent;
+            }
+
+            float velocityAlongSlope = Vector2.Dot(velocity, slopeTangent);
+
+            if (velocityAlongSlope < 0 && velocity.y < -1)
+            {
+                float reductionFactor = 0.8f;
+                velocity += slopeTangent * (Mathf.Abs(velocityAlongSlope) * reductionFactor);
+            }
+
+            float slopeAngle = Mathf.Acos(slopeNormal.y);
+            float effectiveAcceleration = Mathf.Abs(gravity) * Mathf.Sin(slopeAngle);
+
+            velocity += slopeTangent * effectiveAcceleration * Time.fixedDeltaTime;
+        }
+
+
+        if (IsGrounded() && !IsSlope() && !isChargingJump)
         {
             moveInput = Input.GetAxisRaw("Horizontal");
             velocity.x = moveInput * moveSpeed;
@@ -76,7 +109,7 @@ public class Player_Controller : MonoBehaviour
             animator.SetFloat("Speed", Mathf.Abs(moveInput));
         }
 
-        if (!IsGrounded())
+        if (!IsGrounded() && !IsSlope())
         {
             velocity.y += gravity * Time.fixedDeltaTime;
 
@@ -85,9 +118,8 @@ public class Player_Controller : MonoBehaviour
                 animator.Play("Jump_Down");
             }
         }
-        else if (!isChargingJump && velocity.y < 0)
-        {
-            Debug.Log($"속도 y 값: {velocity.y}");
+        else if (!IsSlope() && !isChargingJump && velocity.y < 0)
+        {   
             if (IsGrounded() && velocity.y <= -16)
             {
                 velocity.y = 0f;
@@ -115,7 +147,7 @@ public class Player_Controller : MonoBehaviour
             }
         }
 
-        if (!IsGrounded() && Mathf.Abs(velocity.y) > 0)
+        if (!IsGrounded() && !IsSlope() && Mathf.Abs(velocity.y) > 0)
         {
             Vector2 direction = new Vector2(Mathf.Sign(velocity.x), 0);
             RaycastHit2D wallHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
@@ -140,22 +172,28 @@ public class Player_Controller : MonoBehaviour
                 bounce = true;
 
                 Vector2 reflected = Vector2.Reflect(velocity, headHit.normal);
-                reflected = new Vector2(reflected.x * 0.8f, reflected.y * 0.5f);
+                reflected = new Vector2(reflected.x * 0.6f, reflected.y * 0.1f);
                 velocity = reflected;
 
-                animator.Play("Bounce");
+                animator.Play("Jump_Down");
 
                 deltaX = velocity.x * Time.fixedDeltaTime;
                 deltaY = velocity.y * Time.fixedDeltaTime;
             }
         }
 
-        if (IsSlope())
+        Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
+
+        if (isSlope)  // 또는 if (IsSlope()) 대신, 이미 업데이트한 isSlope 변수를 사용
         {
-             
+            RaycastHit2D snapHit = Physics2D.BoxCast(newPos, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
+            if (snapHit.collider != null)
+            {
+                float snapOffset = boxCastSize.y * 0.5f; // 필요에 따라 조절
+                newPos.y = snapHit.point.y + snapOffset;
+            }
         }
 
-        Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
         rb.MovePosition(newPos);
     }
 
@@ -206,8 +244,7 @@ public class Player_Controller : MonoBehaviour
             velocity = new Vector2(chargedDir * moveSpeed, maxJumpCharge);
             rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
-            rb.AddForce(Vector2.up * 10f);
-            Invoke("ResetJump", 0.2f);
+            Invoke("ResetJump", 0.1f);
         }
 
         if (Input.GetKeyUp(KeyCode.Space) && IsGrounded())
@@ -217,7 +254,7 @@ public class Player_Controller : MonoBehaviour
             velocity = new Vector2(chargedDir * moveSpeed, jumpCharge);
             rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
-            Invoke("ResetJump", 0.2f);         
+            Invoke("ResetJump", 0.1f);         
         }
     }
 
@@ -229,23 +266,44 @@ public class Player_Controller : MonoBehaviour
 
     private bool IsGrounded()
     {
-        RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
-        return hit.collider != null;
+        groundHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
+
+        if (groundHit.collider != null)
+        {
+            Vector2 normal = groundHit.normal.normalized;
+
+            if(normal.y >= 0.99f)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool IsSlope()
     {
-        RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, slopeLayer);
-        return hit.collider != null;
+        slopeHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
+        
+        if (slopeHit.collider != null)
+        {
+            Vector2 normal = slopeHit.normal.normalized;
+
+            if (normal.y < 0.99f)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void OnDrawGizmos()
     {
-        // 플레이어 BoxCast (빨간색)
         Gizmos.color = Color.red;
 
-        // 아래로 이동한 박스
         Vector3 box = transform.position + Vector3.down * boxCastMaxDistance;
+
         Gizmos.DrawWireCube(box, boxCastSize);
     }
 }
