@@ -5,23 +5,24 @@ using UnityEngine;
 public class Player_Controller : MonoBehaviour
 {
     [Header("Player")]
-    public float moveSpeed = 2.5f;
-    public float jumpCharge = 0f;
-    public float minJumpCharge = 2f;
-    public float maxJumpCharge = 14f;
+    [SerializeField] private float moveSpeed = 2.5f;
+    [SerializeField] private float jumpCharge = 0f;
+    [SerializeField] private float minJumpCharge = 2f;
+    [SerializeField] private float maxJumpCharge = 14f;
+    [SerializeField] private Vector2 boxCastSize = new Vector2(0.6f, 0.7f);
+    [SerializeField] private float boxCastMaxDistance = 0.1f;
 
     [Header("Physics")]
-    public float gravity = -9.81f;
+    [SerializeField] private float gravity = -9.81f;
+    [SerializeField] private float currentSlideSpeed = 0f;
+    [SerializeField] private float accelerationFactor = 2f;
+    [SerializeField] private float gravitySlopeMultiplier = 1.2f;
 
     [Header("Components")]
-    public LayerMask groundLayer;
-    public LayerMask slopeLayer;
+    [SerializeField] private LayerMask groundLayer;
 
     RaycastHit2D groundHit;
     RaycastHit2D slopeHit;
-
-    public Vector2 boxCastSize= new Vector2(0.7f, 0.75f);
-    public float boxCastMaxDistance= 0.08f;
 
     private float moveInput;
     private Vector2 velocity;
@@ -29,8 +30,6 @@ public class Player_Controller : MonoBehaviour
     private bool isChargingJump = false;
     private float chargedDir = 0f;
     private bool bounce = false;
-    public bool isGround;
-    public bool isSlope;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
@@ -46,9 +45,6 @@ public class Player_Controller : MonoBehaviour
     private void Update()
     {
         Jump();
-
-        isGround = IsGrounded();
-        isSlope = IsSlope();
     }
 
     private void FixedUpdate()
@@ -63,6 +59,8 @@ public class Player_Controller : MonoBehaviour
 
         if (IsSlope())
         {
+            animator.Play("Bounce");
+
             Vector2 slopeNormal = slopeHit.normal.normalized;
             Vector2 slopeTangent = new Vector2(-slopeNormal.y, slopeNormal.x);
 
@@ -71,18 +69,17 @@ public class Player_Controller : MonoBehaviour
                 slopeTangent = -slopeTangent;
             }
 
-            float velocityAlongSlope = Vector2.Dot(velocity, slopeTangent);
+            Vector2 gravityVec = new Vector2(0, gravity);
+            float gravityProjection = Mathf.Abs(Vector2.Dot(gravityVec, slopeTangent));
+            float targetSlideSpeed = gravityProjection * gravitySlopeMultiplier;
 
-            if (velocityAlongSlope < 0 && velocity.y < -1)
-            {
-                float reductionFactor = 0.8f;
-                velocity += slopeTangent * (Mathf.Abs(velocityAlongSlope) * reductionFactor);
-            }
+            currentSlideSpeed = Mathf.Lerp(currentSlideSpeed, targetSlideSpeed, accelerationFactor * Time.fixedDeltaTime);
 
-            float slopeAngle = Mathf.Acos(slopeNormal.y);
-            float effectiveAcceleration = Mathf.Abs(gravity) * Mathf.Sin(slopeAngle);
-
-            velocity += slopeTangent * effectiveAcceleration * Time.fixedDeltaTime;
+            velocity = slopeTangent.normalized * currentSlideSpeed;
+        }
+        else 
+        {
+            currentSlideSpeed = 0f;
         }
 
 
@@ -136,7 +133,7 @@ public class Player_Controller : MonoBehaviour
             }
         }  
 
-        if (IsGrounded() && moveInput != 0)
+        if (IsGrounded() && !IsSlope() && moveInput != 0)
         {
             Vector2 direction = new Vector2(Mathf.Sign(moveInput), 0);
             RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
@@ -147,7 +144,7 @@ public class Player_Controller : MonoBehaviour
             }
         }
 
-        if (!IsGrounded() && !IsSlope() && Mathf.Abs(velocity.y) > 0)
+        if (!IsGrounded() && Mathf.Abs(velocity.y) > 0)
         {
             Vector2 direction = new Vector2(Mathf.Sign(velocity.x), 0);
             RaycastHit2D wallHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
@@ -184,12 +181,12 @@ public class Player_Controller : MonoBehaviour
 
         Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
 
-        if (isSlope)  // 또는 if (IsSlope()) 대신, 이미 업데이트한 isSlope 변수를 사용
+        if (IsSlope())
         {
             RaycastHit2D snapHit = Physics2D.BoxCast(newPos, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
             if (snapHit.collider != null)
             {
-                float snapOffset = boxCastSize.y * 0.5f; // 필요에 따라 조절
+                float snapOffset = boxCastSize.y * 0.6f;
                 newPos.y = snapHit.point.y + snapOffset;
             }
         }
@@ -287,9 +284,9 @@ public class Player_Controller : MonoBehaviour
         
         if (slopeHit.collider != null)
         {
-            Vector2 normal = slopeHit.normal.normalized;
+            float slopeAngle = Vector2.Angle(slopeHit.normal, Vector2.up);
 
-            if (normal.y < 0.99f)
+            if (slopeAngle > 10f && slopeAngle < 60f)
             {
                 return true;
             }
