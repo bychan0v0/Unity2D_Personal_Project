@@ -54,84 +54,12 @@ public class Player_Controller : MonoBehaviour
 
     private void Move()
     {
+        SlopeMove();
+        NormalMove();
+        FallingMove(); 
+
         float deltaX = velocity.x * Time.fixedDeltaTime;
         float deltaY = velocity.y * Time.fixedDeltaTime;
-
-        if (IsSlope())
-        {
-            animator.Play("Bounce");
-
-            Vector2 slopeNormal = slopeHit.normal.normalized;
-            Vector2 slopeTangent = new Vector2(-slopeNormal.y, slopeNormal.x);
-
-            if (Vector2.Dot(slopeTangent, Vector2.down) < 0)
-            {
-                slopeTangent = -slopeTangent;
-            }
-
-            Vector2 gravityVec = new Vector2(0, gravity);
-            float gravityProjection = Mathf.Abs(Vector2.Dot(gravityVec, slopeTangent));
-            float targetSlideSpeed = gravityProjection * gravitySlopeMultiplier;
-
-            currentSlideSpeed = Mathf.Lerp(currentSlideSpeed, targetSlideSpeed, accelerationFactor * Time.fixedDeltaTime);
-
-            velocity = slopeTangent.normalized * currentSlideSpeed;
-        }
-        else 
-        {
-            currentSlideSpeed = 0f;
-        }
-
-
-        if (IsGrounded() && !IsSlope() && !isChargingJump)
-        {
-            moveInput = Input.GetAxisRaw("Horizontal");
-            velocity.x = moveInput * moveSpeed;
-        }
-
-        if (moveInput > 0)
-        {
-            sprite.flipX = false;
-
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
-        }
-        else if (moveInput < 0)
-        {
-            sprite.flipX = true;
-
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
-        }
-        else
-        {
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
-        }
-
-        if (!IsGrounded() && !IsSlope())
-        {
-            velocity.y += gravity * Time.fixedDeltaTime;
-
-            if(velocity.y < 0 && !bounce)
-            {
-                animator.Play("Jump_Down");
-            }
-        }
-        else if (!IsSlope() && !isChargingJump && velocity.y < 0)
-        {   
-            if (IsGrounded() && velocity.y <= -16)
-            {
-                velocity.y = 0f;
-                bounce = false;
-
-                animator.Play("Splat");
-            }
-            else
-            {
-                velocity.y = 0f;
-                bounce = false;
-
-                animator.Play("Idle");
-            }
-        }  
 
         if (IsGrounded() && !IsSlope() && moveInput != 0)
         {
@@ -192,6 +120,90 @@ public class Player_Controller : MonoBehaviour
         }
 
         rb.MovePosition(newPos);
+    }
+
+    private void SlopeMove()
+    {
+        if (IsSlope())
+        {
+            animator.Play("Bounce");
+
+            Vector2 slopeNormal = slopeHit.normal.normalized;
+            Vector2 slopeTangent = new Vector2(-slopeNormal.y, slopeNormal.x);
+
+            if (Vector2.Dot(slopeTangent, Vector2.down) < 0)
+            {
+                slopeTangent = -slopeTangent;
+            }
+
+            Vector2 gravityVec = new Vector2(0, gravity);
+            float gravityProjection = Mathf.Abs(Vector2.Dot(gravityVec, slopeTangent));
+            float targetSlideSpeed = gravityProjection * gravitySlopeMultiplier;
+
+            currentSlideSpeed = Mathf.Lerp(currentSlideSpeed, targetSlideSpeed, accelerationFactor * Time.fixedDeltaTime);
+
+            velocity = slopeTangent.normalized * currentSlideSpeed;
+        }
+        else
+        {
+            currentSlideSpeed = 0f;
+        }
+    }
+
+    private void NormalMove()
+    {
+        if (IsGrounded() && !IsSlope() && !isChargingJump)
+        {
+            moveInput = Input.GetAxisRaw("Horizontal");
+            velocity.x = moveInput * moveSpeed;
+        }
+
+        if (moveInput > 0)
+        {
+            sprite.flipX = false;
+
+            animator.SetFloat("Speed", Mathf.Abs(moveInput));
+        }
+        else if (moveInput < 0)
+        {
+            sprite.flipX = true;
+
+            animator.SetFloat("Speed", Mathf.Abs(moveInput));
+        }
+        else
+        {
+            animator.SetFloat("Speed", Mathf.Abs(moveInput));
+        }
+    }
+
+    private void FallingMove()
+    {
+        if (!IsGrounded() && !IsSlope())
+        {
+            velocity.y += gravity * Time.fixedDeltaTime;
+
+            if (velocity.y < 0 && !bounce)
+            {
+                animator.Play("Jump_Down");
+            }
+        }
+        else if (!IsSlope() && !isChargingJump && velocity.y < 0)
+        {
+            if (IsGrounded() && velocity.y <= -16)
+            {
+                velocity.y = 0f;
+                bounce = false;
+
+                animator.Play("Splat");
+            }
+            else
+            {
+                velocity.y = 0f;
+                bounce = false;
+
+                animator.Play("Idle");
+            }
+        }
     }
 
     private void Jump()
