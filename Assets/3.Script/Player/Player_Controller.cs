@@ -44,12 +44,15 @@ public class Player_Controller : MonoBehaviour
         TryGetComponent(out rb);
         TryGetComponent(out sprite);
         TryGetComponent(out animator);
-        TryGetComponent(out wind);
+
+        wind = FindObjectOfType<Wind_Controller>();
     }
 
     private void Update()
     {
         Jump();
+
+        Debug.Log(velocity.x);
     }
 
     private void FixedUpdate()
@@ -63,20 +66,29 @@ public class Player_Controller : MonoBehaviour
     {
         SlopeMove();
         NormalMove();
-        FallingMove(); 
+        FallingMove();
+
+        if (IsGrounded() && isWind)
+        {
+            velocity.x += wind.WindForce.x * Time.fixedDeltaTime;
+        }
+        else if (!IsGrounded() && isWind)
+        {
+            velocity.x += wind.WindForce.x * 10f * Time.fixedDeltaTime;
+        }
 
         float deltaX = velocity.x * Time.fixedDeltaTime;
         float deltaY = velocity.y * Time.fixedDeltaTime;
         Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
 
-        if (IsGrounded() && !IsSlope() && moveInput != 0)
+        if (IsGrounded() && !IsSlope())
         {
             Vector2 direction = new Vector2(Mathf.Sign(moveInput), 0);
             RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
 
             if (hit.collider != null)
             {
-                deltaX = (hit.distance - 0.05f) * Mathf.Sign(deltaX);
+                deltaX = (hit.distance - 0.1f) * Mathf.Sign(deltaX);
             }
         }
 
@@ -127,11 +139,6 @@ public class Player_Controller : MonoBehaviour
 
         newPos = rb.position + new Vector2(deltaX, deltaY);
 
-        // if (isWind)
-        // {
-        //     newPos += wind.WindForce;
-        // }
-
         rb.MovePosition(newPos);
     }
 
@@ -169,24 +176,23 @@ public class Player_Controller : MonoBehaviour
         {
             moveInput = Input.GetAxisRaw("Horizontal");
             velocity.x = moveInput * moveSpeed;
+
+            if (IsGrounded() && isWind && moveInput == 0)
+            {
+                velocity.x = wind.WindForce.x * 0.1f;
+            }
         }
 
         if (moveInput > 0)
         {
             sprite.flipX = false;
-
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
         }
         else if (moveInput < 0)
         {
             sprite.flipX = true;
+        }
 
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
-        }
-        else
-        {
-            animator.SetFloat("Speed", Mathf.Abs(moveInput));
-        }
+        animator.SetFloat("Speed", Mathf.Abs(moveInput));
     }
 
     private void FallingMove()
@@ -356,15 +362,5 @@ public class Player_Controller : MonoBehaviour
         Gizmos.color = Color.red;
         Vector3 box = transform.position + Vector3.down * boxCastMaxDistance;
         Gizmos.DrawWireCube(box, boxCastSize);
-
-        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(footPos, 0.1f);
-
-        if (windPlatform != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(windPlatform.transform.position, 0.2f);
-        }
     }
 }
