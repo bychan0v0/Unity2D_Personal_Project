@@ -20,6 +20,7 @@ public class Player_Controller : MonoBehaviour
 
     [Header("Components")]
     [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private GameObject windPlatform;
 
     RaycastHit2D groundHit;
     RaycastHit2D slopeHit;
@@ -27,19 +28,23 @@ public class Player_Controller : MonoBehaviour
     private float moveInput;
     private Vector2 velocity;
 
-    private bool isChargingJump = false;
     private float chargedDir = 0f;
-    private bool bounce = false;
+    private bool isChargingJump = false;
+    private bool isBounce = false;
+    public bool isWind = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
     private Animator animator;
+    private Wind_Controller wind;
+
 
     private void Start()
     {
         TryGetComponent(out rb);
         TryGetComponent(out sprite);
         TryGetComponent(out animator);
+        TryGetComponent(out wind);
     }
 
     private void Update()
@@ -49,6 +54,8 @@ public class Player_Controller : MonoBehaviour
 
     private void FixedUpdate()
     {
+        CheckWindPlatform();
+        CheckWindOff();
         Move();
     }
 
@@ -60,6 +67,7 @@ public class Player_Controller : MonoBehaviour
 
         float deltaX = velocity.x * Time.fixedDeltaTime;
         float deltaY = velocity.y * Time.fixedDeltaTime;
+        Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
 
         if (IsGrounded() && !IsSlope() && moveInput != 0)
         {
@@ -80,7 +88,7 @@ public class Player_Controller : MonoBehaviour
 
             if (wallHit.collider != null)
             {
-                bounce = true;
+                isBounce = true;
 
                 Vector2 reflected = Vector2.Reflect(velocity, wallHit.normal);
                 reflected = new Vector2(reflected.x * 0.5f, reflected.y);
@@ -94,7 +102,7 @@ public class Player_Controller : MonoBehaviour
 
             if (headHit.collider != null)
             {
-                bounce = true;
+                isBounce = true;
 
                 Vector2 reflected = Vector2.Reflect(velocity, headHit.normal);
                 reflected = new Vector2(reflected.x * 0.6f, reflected.y * 0.1f);
@@ -107,8 +115,6 @@ public class Player_Controller : MonoBehaviour
             }
         }
 
-        Vector2 newPos = rb.position + new Vector2(deltaX, deltaY);
-
         if (IsSlope())
         {
             RaycastHit2D snapHit = Physics2D.BoxCast(newPos, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
@@ -118,6 +124,13 @@ public class Player_Controller : MonoBehaviour
                 newPos.y = snapHit.point.y + snapOffset;
             }
         }
+
+        newPos = rb.position + new Vector2(deltaX, deltaY);
+
+        // if (isWind)
+        // {
+        //     newPos += wind.WindForce;
+        // }
 
         rb.MovePosition(newPos);
     }
@@ -182,7 +195,7 @@ public class Player_Controller : MonoBehaviour
         {
             velocity.y += gravity * Time.fixedDeltaTime;
 
-            if (velocity.y < 0 && !bounce)
+            if (velocity.y < 0 && !isBounce)
             {
                 animator.Play("Jump_Down");
             }
@@ -192,14 +205,14 @@ public class Player_Controller : MonoBehaviour
             if (IsGrounded() && velocity.y <= -16)
             {
                 velocity.y = 0f;
-                bounce = false;
+                isBounce = false;
 
                 animator.Play("Splat");
             }
             else
             {
                 velocity.y = 0f;
-                bounce = false;
+                isBounce = false;
 
                 animator.Play("Idle");
             }
@@ -307,12 +320,51 @@ public class Player_Controller : MonoBehaviour
         return false;
     }
 
+    private void CheckWindPlatform()
+    {
+        if (isWind)
+        {
+            return;
+        }
+
+        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(footPos, 0.1f);
+
+        foreach (Collider2D col in hits)
+        {
+            if (col.gameObject == windPlatform)
+            {
+                isWind = true;
+                break;
+            }
+        }
+    }
+
+    private void CheckWindOff()
+    {
+        if (isWind && windPlatform != null)
+        {
+            if (transform.position.y < windPlatform.transform.position.y)
+            {
+                isWind = false;
+            }
+        }
+    }
+
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
-
         Vector3 box = transform.position + Vector3.down * boxCastMaxDistance;
-
         Gizmos.DrawWireCube(box, boxCastSize);
+
+        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(footPos, 0.1f);
+
+        if (windPlatform != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(windPlatform.transform.position, 0.2f);
+        }
     }
 }
