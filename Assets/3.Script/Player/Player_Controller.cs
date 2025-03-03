@@ -20,7 +20,8 @@ public class Player_Controller : MonoBehaviour
 
     [Header("Components")]
     [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private GameObject windPlatform;
+    [SerializeField] private List<GameObject> windPlatform;
+    [SerializeField] private List<GameObject> snowPlatform;
 
     RaycastHit2D groundHit;
     RaycastHit2D slopeHit;
@@ -32,6 +33,7 @@ public class Player_Controller : MonoBehaviour
     private bool isChargingJump = false;
     private bool isBounce = false;
     public bool isWind = false;
+    public bool isSnow = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
@@ -51,14 +53,13 @@ public class Player_Controller : MonoBehaviour
     private void Update()
     {
         Jump();
-
-        Debug.Log(velocity.x);
     }
 
     private void FixedUpdate()
     {
         CheckWindPlatform();
         CheckWindOff();
+        CheckSnowPlatform();
         Move();
     }
 
@@ -68,7 +69,7 @@ public class Player_Controller : MonoBehaviour
         NormalMove();
         FallingMove();
 
-        if (IsGrounded() && isWind)
+        if (IsGrounded() && isWind && !isSnow)
         {
             velocity.x += wind.WindForce.x * Time.fixedDeltaTime;
         }
@@ -172,27 +173,47 @@ public class Player_Controller : MonoBehaviour
 
     private void NormalMove()
     {
-        if (IsGrounded() && !IsSlope() && !isChargingJump)
+        if (IsGrounded() && !IsSlope() && !isChargingJump && !isSnow)
         {
             moveInput = Input.GetAxisRaw("Horizontal");
             velocity.x = moveInput * moveSpeed;
 
-            if (IsGrounded() && isWind && moveInput == 0)
+            if (isWind && moveInput == 0)
             {
                 velocity.x = wind.WindForce.x * 0.1f;
             }
-        }
 
-        if (moveInput > 0)
-        {
-            sprite.flipX = false;
-        }
-        else if (moveInput < 0)
-        {
-            sprite.flipX = true;
-        }
+            if (moveInput > 0)
+            {
+                sprite.flipX = false;
+            }
+            else if (moveInput < 0)
+            {
+                sprite.flipX = true;
+            }
 
-        animator.SetFloat("Speed", Mathf.Abs(moveInput));
+            animator.SetFloat("Speed", Mathf.Abs(moveInput));
+        }
+        else if (IsGrounded() && !IsSlope() && !isChargingJump && isSnow)
+        {
+            moveInput = Input.GetAxisRaw("Horizontal");
+            velocity.x = 0f;
+
+            if (moveInput > 0)
+            {
+                animator.Play("Idle");
+
+                sprite.flipX = false;
+            }
+            else if (moveInput < 0)
+            {
+                animator.Play("Idle");
+
+                sprite.flipX = true;
+            }
+
+            animator.SetFloat("Speed", 0);
+        }
     }
 
     private void FallingMove()
@@ -338,7 +359,7 @@ public class Player_Controller : MonoBehaviour
 
         foreach (Collider2D col in hits)
         {
-            if (col.gameObject == windPlatform)
+            if (windPlatform.Contains(col.gameObject))
             {
                 isWind = true;
                 break;
@@ -350,9 +371,26 @@ public class Player_Controller : MonoBehaviour
     {
         if (isWind && windPlatform != null)
         {
-            if (transform.position.y < windPlatform.transform.position.y)
+            if (transform.position.y < 250f || transform.position.y > 320f)
             {
                 isWind = false;
+            }
+        }
+    }
+
+    private void CheckSnowPlatform()
+    {
+        isSnow = false;
+
+        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(footPos, 0.1f);
+
+        foreach (Collider2D col in hits)
+        {
+            if (snowPlatform.Contains(col.gameObject))
+            {
+                isSnow = true;
+                break;
             }
         }
     }
