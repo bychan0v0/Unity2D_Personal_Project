@@ -17,11 +17,14 @@ public class Player_Controller : MonoBehaviour
     [SerializeField] private float currentSlideSpeed = 0f;
     [SerializeField] private float accelerationFactor = 2f;
     [SerializeField] private float gravitySlopeMultiplier = 1.2f;
+    [SerializeField] private float iceAcceleration = 2f;
+    [SerializeField] private float iceBrakeAcceleration = 5f;
 
     [Header("Components")]
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private List<GameObject> windPlatform;
     [SerializeField] private List<GameObject> snowPlatform;
+    [SerializeField] private List<GameObject> icePlatform;
 
     RaycastHit2D groundHit;
     RaycastHit2D slopeHit;
@@ -34,6 +37,7 @@ public class Player_Controller : MonoBehaviour
     private bool isBounce = false;
     public bool isWind = false;
     public bool isSnow = false;
+    public bool isIce = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
@@ -60,6 +64,7 @@ public class Player_Controller : MonoBehaviour
         CheckWindPlatform();
         CheckWindOff();
         CheckSnowPlatform();
+        CheckIcePlatform();
         Move();
     }
 
@@ -84,12 +89,17 @@ public class Player_Controller : MonoBehaviour
 
         if (IsGrounded() && !IsSlope())
         {
-            Vector2 direction = new Vector2(Mathf.Sign(moveInput), 0);
-            RaycastHit2D hit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, direction, Mathf.Abs(deltaX), groundLayer);
+            RaycastHit2D hitLeft = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.left, Mathf.Abs(deltaX), groundLayer);
+            RaycastHit2D hitRight = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.right, Mathf.Abs(deltaX), groundLayer);
 
-            if (hit.collider != null)
+            if (hitLeft.collider != null)
             {
-                deltaX = (hit.distance - 0.1f) * Mathf.Sign(deltaX);
+                deltaX = (hitLeft.distance - 0.05f) * Mathf.Sign(deltaX);
+            }
+
+            if (hitRight.collider != null)
+            {
+                deltaX = (hitRight.distance - 0.05f) * Mathf.Sign(deltaX);
             }
         }
 
@@ -176,7 +186,24 @@ public class Player_Controller : MonoBehaviour
         if (IsGrounded() && !IsSlope() && !isChargingJump && !isSnow)
         {
             moveInput = Input.GetAxisRaw("Horizontal");
-            velocity.x = moveInput * moveSpeed;
+
+            if (isIce)
+            {
+                float targetSpeed = moveInput * moveSpeed;
+
+                if (moveInput != 0 && Mathf.Sign(velocity.x) != Mathf.Sign(moveInput))
+                {
+                    velocity.x = Mathf.Lerp(velocity.x, targetSpeed, iceBrakeAcceleration * Time.fixedDeltaTime);
+                }
+                else
+                {
+                    velocity.x = Mathf.Lerp(velocity.x, targetSpeed, iceAcceleration * Time.fixedDeltaTime);
+                }
+            }
+            else
+            {
+                velocity.x = moveInput * moveSpeed;
+            }
 
             if (isWind && moveInput == 0)
             {
@@ -275,8 +302,11 @@ public class Player_Controller : MonoBehaviour
             isChargingJump = true;
             jumpCharge = minJumpCharge;
 
-            velocity.x = 0;
-            rb.velocity = new Vector2(0, rb.velocity.y);
+            if (!isIce)
+            {
+                velocity.x = 0;
+                rb.velocity = new Vector2(0, rb.velocity.y);
+            }
 
             animator.Play("Charge");
         }
@@ -290,7 +320,21 @@ public class Player_Controller : MonoBehaviour
         {
             animator.Play("Jump_Up");
 
-            velocity = new Vector2(chargedDir * moveSpeed, maxJumpCharge);
+            if (!isIce)
+            {
+                velocity = new Vector2(chargedDir * moveSpeed, maxJumpCharge);
+            }
+            else
+            {
+                float newX = velocity.x;
+
+                if (Mathf.Abs(chargedDir) > 0)
+                {
+                    newX += chargedDir * moveSpeed;
+                }
+                velocity = new Vector2(newX, maxJumpCharge);
+            }
+
             rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
             Invoke("ResetJump", 0.1f);
@@ -300,7 +344,21 @@ public class Player_Controller : MonoBehaviour
         {
             animator.Play("Jump_Up");
 
-            velocity = new Vector2(chargedDir * moveSpeed, jumpCharge);
+            if (!isIce)
+            {
+                velocity = new Vector2(chargedDir * moveSpeed, jumpCharge);
+            }
+            else
+            {
+                float newX = velocity.x;
+
+                if (Mathf.Abs(chargedDir) > 0)
+                {
+                    newX += chargedDir * moveSpeed;
+                }
+                velocity = new Vector2(newX, jumpCharge);
+            }
+
             rb.MovePosition(rb.position + velocity * Time.deltaTime);
 
             Invoke("ResetJump", 0.1f);         
@@ -354,8 +412,7 @@ public class Player_Controller : MonoBehaviour
             return;
         }
 
-        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
-        Collider2D[] hits = Physics2D.OverlapCircleAll(footPos, 0.1f);
+        Collider2D[] hits = Physics2D.OverlapBoxAll(new Vector2(transform.position.x, transform.position.y - boxCastMaxDistance), boxCastSize, 0f);
 
         foreach (Collider2D col in hits)
         {
@@ -382,14 +439,29 @@ public class Player_Controller : MonoBehaviour
     {
         isSnow = false;
 
-        Vector2 footPos = (Vector2)transform.position - new Vector2(0, boxCastSize.y / 2 + boxCastMaxDistance);
-        Collider2D[] hits = Physics2D.OverlapCircleAll(footPos, 0.1f);
+        Collider2D[] hits = Physics2D.OverlapBoxAll(new Vector2(transform.position.x, transform.position.y - boxCastMaxDistance), boxCastSize, 0f);
 
         foreach (Collider2D col in hits)
         {
             if (snowPlatform.Contains(col.gameObject))
             {
                 isSnow = true;
+                break;
+            }
+        }
+    }
+
+    private void CheckIcePlatform()
+    {
+        isIce = false;
+
+        Collider2D[] hits = Physics2D.OverlapBoxAll(new Vector2(transform.position.x, transform.position.y - boxCastMaxDistance), boxCastSize, 0f);
+
+        foreach (Collider2D col in hits)
+        {
+            if (icePlatform.Contains(col.gameObject))
+            {
+                isIce = true;
                 break;
             }
         }
