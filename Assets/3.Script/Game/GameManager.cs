@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -10,7 +11,11 @@ public class GameManager : MonoBehaviour
     [Header("플레이어 위치")]
     [SerializeField] private Transform player;
 
+    [Header("점수 텍스트")]
+    [SerializeField] private Text text;
+
     private float floorHeight = 10f;
+    private float score = 0f;
 
     private void Update()
     {
@@ -27,5 +32,15 @@ public class GameManager : MonoBehaviour
                 floors[i].SetActive(false);
             }
         }
+
+        CheckScore();
+    }
+
+    private void CheckScore()
+    {
+        float maxY = 426.4f;
+
+        score = player.position.y / maxY * 100f;
+        text.text = score.ToString("F1") + " %";
     }
 }

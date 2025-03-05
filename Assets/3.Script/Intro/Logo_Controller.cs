@@ -14,11 +14,14 @@ public class Logo_Controller : MonoBehaviour
     [SerializeField] private float shakeDuration = 0.8f;
     [SerializeField] private float shakeStrength = 0.1f;
 
+    [SerializeField] private Menu_Controller menuController;
+
     private Text_Controller textController;
 
     private void Start()
     {
         textController = FindObjectOfType<Text_Controller>();
+        menuController = FindObjectOfType<Menu_Controller>();
 
         Color initColor = logoSprite.color;
 

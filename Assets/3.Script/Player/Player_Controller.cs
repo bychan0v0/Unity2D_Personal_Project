@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Player_Controller : MonoBehaviour
 {
@@ -35,14 +36,15 @@ public class Player_Controller : MonoBehaviour
     private float chargedDir = 0f;
     private bool isChargingJump = false;
     private bool isBounce = false;
-    public bool isWind = false;
-    public bool isSnow = false;
-    public bool isIce = false;
+    private bool isWind = false;
+    private bool isSnow = false;
+    private bool isIce = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
     private Animator animator;
     private Wind_Controller wind;
+    private AutoSaveManager autoSaveManager;
 
 
     private void Start()
@@ -52,11 +54,25 @@ public class Player_Controller : MonoBehaviour
         TryGetComponent(out animator);
 
         wind = FindObjectOfType<Wind_Controller>();
+        autoSaveManager = FindObjectOfType<AutoSaveManager>();
     }
 
     private void Update()
     {
         Jump();
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            if (autoSaveManager != null)
+            {
+                autoSaveManager.LoadGame();
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            SceneManager.LoadScene("Intro");
+        }
     }
 
     private void FixedUpdate()
@@ -371,7 +387,7 @@ public class Player_Controller : MonoBehaviour
         jumpCharge = 0f;
     }
 
-    private bool IsGrounded()
+    public bool IsGrounded()
     {
         groundHit = Physics2D.BoxCast(transform.position, boxCastSize, 0f, Vector2.down, boxCastMaxDistance, groundLayer);
 
