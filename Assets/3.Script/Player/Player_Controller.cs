@@ -9,12 +9,12 @@ public class Player_Controller : MonoBehaviour
     [SerializeField] private float moveSpeed = 2.5f;
     [SerializeField] private float jumpCharge = 0f;
     [SerializeField] private float minJumpCharge = 2f;
-    [SerializeField] private float maxJumpCharge = 14f;
+    [SerializeField] private float maxJumpCharge = 14.4f;
     [SerializeField] private Vector2 boxCastSize = new Vector2(0.6f, 0.7f);
     [SerializeField] private float boxCastMaxDistance = 0.1f;
 
     [Header("Physics")]
-    [SerializeField] private float gravity = -9.81f;
+    [SerializeField] private float gravity = -25f;
     [SerializeField] private float currentSlideSpeed = 0f;
     [SerializeField] private float accelerationFactor = 2f;
     [SerializeField] private float gravitySlopeMultiplier = 1.2f;
@@ -36,16 +36,16 @@ public class Player_Controller : MonoBehaviour
     private float chargedDir = 0f;
     private bool isChargingJump = false;
     private bool isBounce = false;
-    private bool isWind = false;
+    public bool isWind = false;
     private bool isSnow = false;
     private bool isIce = false;
+    public bool isGround = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sprite;
     private Animator animator;
     private Wind_Controller wind;
     private AutoSaveManager autoSaveManager;
-
 
     private void Start()
     {
@@ -59,7 +59,9 @@ public class Player_Controller : MonoBehaviour
 
     private void Update()
     {
+        isGround = IsGrounded();
         Jump();
+        CheckEnding();
 
         if (Input.GetKeyDown(KeyCode.R))
         {
@@ -479,6 +481,20 @@ public class Player_Controller : MonoBehaviour
             {
                 isIce = true;
                 break;
+            }
+        }
+    }
+
+    private void CheckEnding()
+    {
+        Collider2D[] hits = Physics2D.OverlapBoxAll(new Vector2(transform.position.x, transform.position.y - boxCastMaxDistance), boxCastSize, 0f);
+
+        foreach (Collider2D col in hits)
+        {
+            if(col.gameObject.name == "Queen")
+            {
+                Debug.Log("°øÁÖ ¤¾¤·");
+                Fade_Controller.Instance.FadeOutAndLoadScene("End");
             }
         }
     }

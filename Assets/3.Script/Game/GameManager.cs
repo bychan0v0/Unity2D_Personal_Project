@@ -14,6 +14,9 @@ public class GameManager : MonoBehaviour
     [Header("점수 텍스트")]
     [SerializeField] private Text text;
 
+    [Header("순간이동 층")]
+    [SerializeField] private int floor;
+
     private float floorHeight = 10f;
     private float score = 0f;
 

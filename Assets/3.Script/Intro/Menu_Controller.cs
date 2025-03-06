@@ -33,6 +33,9 @@ public class Menu_Controller : MonoBehaviour
     public bool menuActivated = false;
     public bool canActivate = false;
 
+    private float menuTimer;
+    private bool menuOn;
+
     private void Start()
     {
         Invoke("EnableInput", 3f);
@@ -63,13 +66,22 @@ public class Menu_Controller : MonoBehaviour
         }
 
         // 메뉴가 아직 활성화되지 않았고, 스페이스키를 누르면 메뉴 활성화 (로고는 그대로 유지)
-        if (!menuActivated && Input.GetKeyDown(KeyCode.Space))
+        if (!menuActivated && Input.GetKeyDown(KeyCode.Space) && !menuOn)
         {
-            // Invoke("ActivateMenu", 0.1f);
-            ActivateMenu();
+            Invoke("ActivateMenu", 0.1f);
+            menuOn = true;
         }
 
-        if (menuActivated)
+        if (menuOn)
+        {
+            menuTimer += Time.deltaTime;
+            if (menuTimer >= 0.2f)
+            {
+                menuOn = false;
+            }
+        }
+
+        if (menuActivated && menuTimer >= 0.2f)
         {
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
@@ -86,7 +98,7 @@ public class Menu_Controller : MonoBehaviour
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                SelectMenuItem();
+                Invoke("SelectMenuItem", 0.5f);
             }
         }
     }
@@ -175,7 +187,7 @@ public class Menu_Controller : MonoBehaviour
 
     private IEnumerator DelayedUpdateCursor()
     {
-        yield return new WaitForSeconds(0.5f); // 레이아웃이 완전히 갱신된 후 실행
+        yield return null;
         continueController.UpdateCursor(); // 커서 위치 갱신
     }
 

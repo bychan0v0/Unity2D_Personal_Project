@@ -22,9 +22,6 @@ public class Continue_Controller : MonoBehaviour
     [Header("Cursor Settings")]
     [SerializeField] private float cursorOffsetX = 95f; // 커서가 버튼 왼쪽으로 이동할 오프셋
 
-    [Header("Input Settings")]
-    [SerializeField] private float inputEnableDelay = 1f; // 메뉴 활성화 후 입력 대기 시간
-
     private List<Button> folderButtons = new List<Button>();
     private int currentIndex = 0;
     private bool inputEnabled = false;
@@ -38,15 +35,9 @@ public class Continue_Controller : MonoBehaviour
     {
         // 패널이 활성화되면 저장 슬롯 버튼들을 동적으로 생성합니다.
         PopulateFolderButtons();
+        UpdateCursor();
         currentIndex = 0;
         UpdateSelection();
-        UpdateCursor();
-        inputEnabled = false;
-        StartCoroutine(EnableInputAfterDelay(inputEnableDelay));
-    }
-    private IEnumerator EnableInputAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
         inputEnabled = true;
     }
 
@@ -164,6 +155,7 @@ public class Continue_Controller : MonoBehaviour
         continuePanel.SetActive(false);
         gameObject.SetActive(false);
         menuPanel.SetActive(true);
+        inputEnabled = false;
         menuController.menuActivated = true;
         menuController.UpdateCursor();
     }

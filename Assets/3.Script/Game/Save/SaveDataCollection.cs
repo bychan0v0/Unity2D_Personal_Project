@@ -7,6 +7,7 @@ public class GameData
 {
     // 플레이어의 위치
     public Vector3 playerPosition;
+    public bool isWind;
 }
 
 [System.Serializable]

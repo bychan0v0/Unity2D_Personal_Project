@@ -51,6 +51,7 @@ public class AutoSaveManager : MonoBehaviour
         // 새 게임 데이터를 생성 (여기서는 플레이어 위치와 점수 예시)
         GameData newData = new GameData();
         newData.playerPosition = player.transform.position;
+        newData.isWind = player.GetComponent<Player_Controller>().isWind;
 
         // 새 데이터를 추가
         collection.saves.Add(newData);
@@ -84,6 +85,7 @@ public class AutoSaveManager : MonoBehaviour
                 if (player != null)
                 {
                     player.transform.position = latest.playerPosition;
+                    player.GetComponent<Player_Controller>().isWind = latest.isWind;
                 }
             }
         }
