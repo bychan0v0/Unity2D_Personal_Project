@@ -12,7 +12,9 @@ public class Menu_Controller : MonoBehaviour
     [SerializeField] private Text promptText;      // "Press Space" 안내 문구 (Canvas UI Text)
     [SerializeField] private GameObject menuPanel;   // 메인 메뉴 패널 (이어하기, 새로하기, 조작법, 종료하기 버튼)
     [SerializeField] private GameObject continuePanel; // 이어하기(Continue) 패널 (ScrollRect 포함)
+    [SerializeField] private GameObject manipulatePanel;
     [SerializeField] private Continue_Controller continueController; // 이어하기(Continue) 패널 (ScrollRect 포함)
+    [SerializeField] private Manipulate_Controller manipulateController; // 이어하기(Continue) 패널 (ScrollRect 포함)
 
     [Header("Animation Settings")]
     [SerializeField] private float fadeDuration = 0.5f; // 안내 문구 FadeOut 시간
@@ -41,6 +43,7 @@ public class Menu_Controller : MonoBehaviour
         Invoke("EnableInput", 3f);
 
         continueController = FindObjectOfType<Continue_Controller>();
+        manipulateController = FindObjectOfType<Manipulate_Controller>();
 
         UpdateSelection();
         UpdateCursor();
@@ -52,6 +55,10 @@ public class Menu_Controller : MonoBehaviour
             continuePanel.SetActive(false);
         if (continueController != null)
             continueController.gameObject.SetActive(false);
+        if (manipulatePanel != null)
+            manipulatePanel.SetActive(false);
+        if (manipulateController != null)
+            manipulateController.gameObject.SetActive(false);
 
         // 커서도 메뉴가 뜰 때 같이 보이도록, 초기에는 비활성화
         if (cursor != null)
@@ -175,7 +182,13 @@ public class Menu_Controller : MonoBehaviour
                 SceneManager.LoadScene("Main");
                 break;
             case 2:
-                // 조작법 화면 전환 로직 구현
+                menuActivated = false;
+                if (menuPanel != null)
+                    menuPanel.SetActive(false);
+                if (continuePanel != null)
+                    manipulatePanel.SetActive(true);
+                if (continueController != null)
+                    manipulateController.gameObject.SetActive(true);
                 break;
             case 3:
                 Application.Quit();
